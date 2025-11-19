@@ -1,0 +1,172 @@
+{
+  "name": "Task Prioritization",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 6 * * *"
+            }
+          ]
+        }
+      },
+      "id": "daily-schedule",
+      "name": "Daily Schedule (6 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8000/automation/task-prioritization/{{ $env.USER_ID }}",
+        "options": {}
+      },
+      "id": "get-tasks",
+      "name": "Get Task Recommendations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format task prioritization\nconst recommendations = items[0].json.recommendations || [];\nconst tasks = recommendations.map((rec, index) => ({\n  task_id: rec.item_id,\n  priority_score: rec.score,\n  priority_level: rec.score > 0.8 ? 'high' : rec.score > 0.6 ? 'medium' : 'low',\n  rank: index + 1,\n  recommended_action: 'focus',\n  confidence: rec.n_models || 1\n}));\n\n// Group by priority\nconst high_priority = tasks.filter(t => t.priority_level === 'high');\nconst medium_priority = tasks.filter(t => t.priority_level === 'medium');\nconst low_priority = tasks.filter(t => t.priority_level === 'low');\n\nreturn [{\n  json: {\n    user_id: items[0].json.user_id,\n    date: new Date().toISOString().split('T')[0],\n    tasks: tasks,\n    summary: {\n      high_priority_count: high_priority.length,\n      medium_priority_count: medium_priority.length,\n      low_priority_count: low_priority.length\n    },\n    generated_at: items[0].json.generated_at\n  }\n}];"
+      },
+      "id": "format-tasks",
+      "name": "Format Tasks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.TASK_SERVICE_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "update-tasks",
+      "name": "Update Task Priorities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NOTIFICATION_SERVICE_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"Your daily task priorities have been updated\",\n  \"high_priority_tasks\": {{ $json.summary.high_priority_count }},\n  \"user_id\": \"{{ $json.user_id }}\"\n}",
+        "options": {}
+      },
+      "id": "send-notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-status",
+              "name": "status",
+              "value": "prioritized",
+              "type": "string"
+            },
+            {
+              "id": "log-count",
+              "name": "task_count",
+              "value": "={{ $json.tasks.length }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [1050, 400]
+    }
+  ],
+  "connections": {
+    "Daily Schedule (6 AM)": {
+      "main": [
+        [
+          {
+            "node": "Get Task Recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Task Recommendations": {
+      "main": [
+        [
+          {
+            "node": "Format Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Tasks": {
+      "main": [
+        [
+          {
+            "node": "Update Task Priorities",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Task Priorities": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Notification": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
+

@@ -1,0 +1,57 @@
+# Recommendation Engine Configuration
+
+data_warehouse:
+  type: "duckdb"
+  path: "data/warehouse.duckdb"
+  
+models:
+  base_path: "models"
+  retrain_interval_hours: 24
+  min_samples_for_training: 10
+  
+recommendation:
+  default_top_k: 10
+  diversity_weight: 0.3
+  novelty_weight: 0.2
+  
+domains:
+  movies:
+    enabled: true
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    knn_neighbors: 20
+  music:
+    enabled: true
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    knn_neighbors: 20
+  tasks:
+    enabled: true
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    knn_neighbors: 15
+  notes:
+    enabled: true
+    embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+    knn_neighbors: 15
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  
+n8n:
+  webhook_url: "http://localhost:5678/webhook"
+  api_key: ""  # Set via environment variable
+
+automation:
+  daily_playlist:
+    enabled: true
+    schedule: "09:00"
+    top_k: 20
+  weekly_movies:
+    enabled: true
+    schedule: "monday 10:00"
+    top_k: 5
+  task_prioritization:
+    enabled: true
+    schedule: "06:00"
+    top_k: 10
+

@@ -1,0 +1,166 @@
+{
+  "name": "Weekly Movie Recommendations",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "weekly-schedule",
+      "name": "Weekly Schedule (Monday 10 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8000/automation/weekly-movies/{{ $env.USER_ID }}",
+        "options": {}
+      },
+      "id": "get-movies",
+      "name": "Get Weekly Movies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format movie recommendations\nconst recommendations = items[0].json.recommendations || [];\nconst movies = recommendations.map((rec, index) => ({\n  item_id: rec.item_id,\n  score: rec.score,\n  rank: index + 1,\n  recommendation_reason: rec.score > 0.7 ? 'High match based on your preferences' : 'Based on similar users'\n}));\n\nreturn [{\n  json: {\n    user_id: items[0].json.user_id,\n    week_start: new Date().toISOString().split('T')[0],\n    movies: movies,\n    generated_at: items[0].json.generated_at\n  }\n}];"
+      },
+      "id": "format-movies",
+      "name": "Format Recommendations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NOTIFICATION_SERVICE_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "send-notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MOVIE_SERVICE_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "save-to-library",
+      "name": "Save to Watchlist",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-status",
+              "name": "status",
+              "value": "completed",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-completion",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [1050, 400]
+    }
+  ],
+  "connections": {
+    "Weekly Schedule (Monday 10 AM)": {
+      "main": [
+        [
+          {
+            "node": "Get Weekly Movies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Weekly Movies": {
+      "main": [
+        [
+          {
+            "node": "Format Recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Recommendations": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save to Watchlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Notification": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Watchlist": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
+

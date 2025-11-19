@@ -1,0 +1,141 @@
+{
+  "name": "Daily Playlist Recommendations",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8000/automation/daily-playlist/{{ $env.USER_ID }}",
+        "options": {}
+      },
+      "id": "get-recommendations",
+      "name": "Get Daily Playlist",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format playlist for music service\nconst recommendations = items[0].json.recommendations || [];\nconst playlist = recommendations.map(rec => ({\n  item_id: rec.item_id,\n  score: rec.score,\n  priority: rec.score > 0.8 ? 'high' : 'medium'\n}));\n\nreturn [{\n  json: {\n    playlist_id: `daily-${new Date().toISOString().split('T')[0]}`,\n    user_id: items[0].json.user_id,\n    items: playlist,\n    generated_at: items[0].json.generated_at\n  }\n}];"
+      },
+      "id": "format-playlist",
+      "name": "Format Playlist",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.MUSIC_SERVICE_WEBHOOK }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "send-to-service",
+      "name": "Send to Music Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-success",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "log-timestamp",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.2,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get Daily Playlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Daily Playlist": {
+      "main": [
+        [
+          {
+            "node": "Format Playlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Playlist": {
+      "main": [
+        [
+          {
+            "node": "Send to Music Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Music Service": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
+
