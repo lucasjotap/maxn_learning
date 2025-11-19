@@ -46,14 +46,60 @@ This system combines multiple recommendation algorithms (KNN, Collaborative Filt
 └──────────────────────────┘
 ```
 
+## 🚀 Quick Start (See It In Action!)
+
+The fastest way to see the system in action:
+
+```bash
+# Make quickstart script executable
+chmod +x quickstart.sh
+
+# Run the quickstart (installs deps, seeds data, trains models, starts server)
+./quickstart.sh
+```
+
+This will:
+1. ✅ Set up virtual environment and install dependencies
+2. ✅ Seed sample data (users, movies, music, tasks)
+3. ✅ Train all ML models
+4. ✅ Start the API server at http://localhost:8000
+
+Then in **another terminal**:
+
+```bash
+# Run the demo to see recommendations in action
+python demo.py
+
+# Or test the API endpoints
+chmod +x test_api.sh
+./test_api.sh
+
+# Or visit the interactive API docs
+open http://localhost:8000/docs
+```
+
+### Quick Demo Script
+
+```bash
+# Run the interactive demo
+python demo.py
+```
+
+This shows:
+- User statistics
+- Movie recommendations
+- Music recommendations  
+- Task prioritization
+- Semantic search example
+
 ## Installation
 
 ### Prerequisites
 
 - Python 3.8+
-- n8n (for automation workflows)
+- n8n (for automation workflows - optional)
 
-### Setup
+### Manual Setup
 
 1. **Clone the repository**:
 ```bash
@@ -66,15 +112,12 @@ cd mxn_learning
 pip install -r requirements.txt
 ```
 
-3. **Configure the system**:
-Edit `config/config.yaml` to customize settings for your environment.
-
-4. **Seed sample data (optional)**:
+3. **Seed sample data**:
 ```bash
 python -m src.seed_data
 ```
 
-5. **Train initial models**:
+4. **Train initial models**:
 ```bash
 python -m src.main --mode training
 ```
@@ -84,7 +127,7 @@ Or use the API:
 curl -X POST http://localhost:8000/training/train
 ```
 
-6. **Start the API server**:
+5. **Start the API server**:
 ```bash
 python -m src.main --mode api
 ```
